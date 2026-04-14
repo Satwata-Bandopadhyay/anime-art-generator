@@ -216,10 +216,10 @@
 <script>
     const API_KEY = "sk_xvFFSUyDtPLJzsx2Q8gmjJP1dk1lSRgN";
     
-    // Auto-retry variables
     let retryCount = 0;
     const maxRetries = 10;
     let currentUrl = "";
+    let loadTimeout;
 
     function enhancePrompt() {
         const input = document.getElementById('promptInput');
@@ -251,15 +251,12 @@
             return;
         }
 
-        // Setup size
         let width = 1024, height = 1024;
         if (ratio === "portrait") { width = 720; height = 1280; }
         else if (ratio === "landscape") { width = 1280; height = 720; }
 
-        // Setup seed
         const seed = seedInput || Math.floor(Math.random() * 1000000);
 
-        // UI state changes
         document.getElementById('generateBtn').disabled = true;
         document.getElementById('generateBtn').innerText = "Processing...";
         document.getElementById('loaderContainer').style.display = "flex";
@@ -268,10 +265,7 @@
         document.getElementById('placeholderText').style.display = "none";
         document.getElementById('actionButtons').style.display = "none";
 
-        // Final Prompt for Anime style
         const finalPrompt = encodeURIComponent(promptInput + ", high quality anime art style");
-        
-        // Changed model to 'turbo' as requested
         currentUrl = `https://image.pollinations.ai/prompt/${finalPrompt}?width=${width}&height=${height}&seed=${seed}&model=turbo&nologo=true`;
         
         retryCount = 0;
@@ -279,15 +273,19 @@
     }
 
     function attemptLoadImage() {
-        const resultImage = document.getElementById('resultImage');
-        
-        // Cache buster: Adding a timestamp so browser doesn't load a failed cache
         const cacheBusterUrl = `${currentUrl}&cb=${Date.now()}`;
         
-        resultImage.src = cacheBusterUrl;
+        // Background image loading method
+        const tempImg = new Image(); 
+        
+        clearTimeout(loadTimeout);
 
-        // Success handler
-        resultImage.onload = () => {
+        // On successful image load
+        tempImg.onload = () => {
+            clearTimeout(loadTimeout);
+            const resultImage = document.getElementById('resultImage');
+            resultImage.src = tempImg.src; 
+            
             document.getElementById('loaderContainer').style.display = "none";
             resultImage.style.display = "block";
             
@@ -298,16 +296,14 @@
             document.getElementById('actionButtons').style.display = "flex";
         };
 
-        // Infinite Loading & Auto-Retry handler
-        resultImage.onerror = () => {
+        // On image load error
+        tempImg.onerror = () => {
+            clearTimeout(loadTimeout);
             if (retryCount < maxRetries) {
                 retryCount++;
                 document.getElementById('statusText').innerText = `Server busy. Retrying... (${retryCount}/${maxRetries})`;
-                
-                // Wait 3 seconds before trying again silently
                 setTimeout(attemptLoadImage, 3000);
             } else {
-                // If it fails even after 10 retries
                 alert("Server is extremely overloaded right now. Please try again later.");
                 document.getElementById('loaderContainer').style.display = "none";
                 document.getElementById('placeholderText').style.display = "block";
@@ -317,6 +313,15 @@
                 btn.innerText = "Generate Anime Image";
             }
         };
+
+        // Timeout guard: Auto-retry if server hangs for 12 seconds
+        loadTimeout = setTimeout(() => {
+            tempImg.src = ""; // Cancel pending request
+            tempImg.onerror(); // Force error to trigger retry
+        }, 12000);
+
+        // Send request after setting all rules
+        tempImg.src = cacheBusterUrl;
     }
 
     function downloadImage() {
