@@ -225,7 +225,7 @@
     function loginToPollinations() {
         const redirectUrl = encodeURIComponent(window.location.href.split('#')[0]);
         // Restricting model to turbo as requested
-        window.location.href = `https://enter.pollinations.ai/authorize?redirect_url=${redirectUrl}&app_key=${APP_KEY}&models=turbo`;
+        window.location.href = `https://enter.pollinations.ai/authorize?redirect_url=${redirectUrl}&app_key=${APP_KEY}`;
     }
 
     function logoutFromPollinations() {
